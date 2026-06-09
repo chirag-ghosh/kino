@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
+    <title>Kino</title>
+    <style>
+      body,
+      html {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: "Hanken Grotesk", sans-serif;
+        font-optical-sizing: auto;
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      .bg-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+        background-color: #000;
+      }
+
+      .bg-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: center;
+        opacity: 0;
+        transform: scale(1.05);
+        transition: opacity 1.5s ease-in-out, transform 5s linear;
+      }
+
+      .bg-layer.active {
+        opacity: 1;
+        transform: scale(1.15);
+      }
+
+      .hero {
+        position: relative;
+        width: 100%;
+        min-height: 100vh;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+      }
+
+      .title-box {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 1000px;
+        padding: 2rem;
+        color: #fff;
+        mix-blend-mode: lighten;
+        text-align: center;
+      }
+
+      .film-title {
+        margin: 0;
+        font-size: 2rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .film-details {
+        margin-top: 0.5rem;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr; 
+        align-items: center;
+        gap: 3rem;
+        text-transform: uppercase;
+      }
+
+      .caption {
+        margin-top: 0.75rem;
+        font-size: 1rem;
+        opacity: 0.75;
+        text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .status {
+        margin-top: 1rem;
+        font-size: 0.95rem;
+        opacity: 0.85;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-container">
+      <div class="bg-layer active" id="bg1"></div>
+      <div class="bg-layer" id="bg2"></div>
+    </div>
+
+    <div class="hero">
+      <div class="title-box">
+        <h1 id="filmTitle" class="film-title">Loading...</h1>
+        <div class="film-details">
+          <p id="filmYear" class="caption"></p>
+          <p id="filmDirector" class="caption"></p>
+          <p id="filmDop" class="caption"></p>
+        </div>
+        <p id="status" class="status"></p>
+      </div>
+    </div>
+
+    <script>
+      const apiUrl = "/api/featured";
+      const bg1 = document.getElementById("bg1");
+      const bg2 = document.getElementById("bg2");
+      const titleEl = document.getElementById("filmTitle");
+      const statusEl = document.getElementById("status");
+      let isBg1Active = true;
+      let hasLoaded = false;
+
+      function updateFeatured(data) {
+        titleEl.textContent = data.title;
+        statusEl.textContent = "";
+        document.getElementById("filmYear").textContent = "Year: " + (data.year || "N/A");
+        document.getElementById("filmDirector").textContent = "Director: " + (data.director || "N/A");
+        document.getElementById("filmDop").textContent = "DOP: " + (data.dop || "N/A");
+
+        if (!hasLoaded) {
+          bg1.style.backgroundImage = `url('${data.image}')`;
+          bg1.classList.add("active");
+          hasLoaded = true;
+          return;
+        }
+
+        const nextLayer = isBg1Active ? bg2 : bg1;
+        const activeLayer = isBg1Active ? bg1 : bg2;
+
+        nextLayer.style.backgroundImage = `url('${data.image}')`;
+        nextLayer.classList.add("active");
+        activeLayer.classList.remove("active");
+        isBg1Active = !isBg1Active;
+      }
+
+      function showError(message) {
+        statusEl.textContent = message;
+        console.warn(message);
+      }
+
+      function fetchFeatured() {
+        fetch(apiUrl, { cache: "no-cache" })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(updateFeatured)
+          .catch(() => {
+            showError(
+              "Unable to load featured film. Make sure the Python server is running.",
+            );
+          });
+      }
+
+      fetchFeatured();
+      setInterval(fetchFeatured, 10000);
+    </script>
+  </body>
+</html>
