@@ -4,6 +4,8 @@ services:
   kino:
     build: .
     container_name: kino
+    environment:
+      - TMDB_API_KEY=$TMDB_API_KEY
     ports:
       - "8000:8000"
     restart: unless-stopped
