@@ -1,12 +1,22 @@
 import os
 import random
+from sys import stderr
 import threading
 
 import requests
 from flask import Flask, jsonify, request, send_from_directory
 from dotenv import load_dotenv
+from loguru import logger
 
 load_dotenv()
+
+# Logging config
+logger.remove()
+logger.add(
+    sink=stderr,
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PORT = 8000
@@ -55,6 +65,9 @@ def fetch_films():
                 for item in results:
                     item["media_type"] = "tv" if is_a_tv else "movie"
                 FILMS_CACHE.extend(results)
+            else:
+                logger.error(f"Failed to fetch {list_key} (page {page}): {response.status_code}")
+                logger.error(f"Response: {response.text}")
     return []
 
 def fetch_film_images(film_id, media_type):
@@ -86,6 +99,9 @@ def fetch_film_images(film_id, media_type):
             backdrop_url = "https://image.tmdb.org/t/p/original" + selected_backdrops[0].get("file_path", "")
         if logos:
             logo_url = "https://image.tmdb.org/t/p/original" + selected_logos[0].get("file_path", "")
+    else:
+        logger.error(f"Failed to fetch images for {media_type} ID {film_id}: {response.status_code}")
+        logger.error(f"Response: {response.text}")
     return backdrop_url, logo_url
 
 def get_random_film_image():
@@ -106,7 +122,7 @@ def index():
             "top_rated_movies",
             "top_rated_tv",
         ]
-    print(f"Included lists: {included_lists}")
+    logger.info(f"Included lists: {included_lists}")
     REQUESTED_FETCH_URLS.update(included_lists)
     return send_from_directory(BASE_DIR, "index.html")
 
@@ -126,6 +142,7 @@ def api_featured():
             "backdrop_url": backdrop_url,
             "logo_url": logo_url
         })
+    logger.error("No films available")
     return jsonify({"error": "No films available"}), 500
     
 
